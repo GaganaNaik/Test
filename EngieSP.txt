@@ -1,0 +1,1251 @@
+USE [Reconsmart_Engie_DB]
+GO
+/****** Object:  StoredProcedure [dbo].[EmailTrigger]    Script Date: 7/23/2020 2:16:26 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+  
+CREATE PROCEDURE [dbo].[EmailTrigger]              
+@email_recipients varchar(8000)= 'ramaseshan.pr@accenture.com',              
+@email_copyrecipients VARCHAR(8000)= 'joxy.ej@accenture.com;narender.g.singh@accenture.com' 
+
+--@email_recipients varchar(8000)= 'gagana.ramesh.naik@accenture.com;unnati.ghodki@accenture.com',              
+--@email_copyrecipients VARCHAR(8000)= 'jaya.a.pandey@accenture.com;narender.g.singh@accenture.com'                
+              
+AS              
+BEGIN              
+             
+ SET NOCOUNT ON;         
+        
+ DECLARE @EmailBodyHTML NVARCHAR(MAX)              
+ DECLARE @ReportDate nvarchar(max)              
+             
+--         @email_recipients varchar(8000),              
+--   @email_copyrecipients VARCHAR(8000)    
+       
+              
+ SET @ReportDate =  CONVERT(NVARCHAR,GETDATE())              
+   
+              
+                 
+ DECLARE @cmd nvarchar(4000)              
+        
+  
+SET @cmd=''              
+   
+ SET @cmd='bcp "exec ReconSmart_Engie_DB..TaskReport" queryout "K:\EmailTrigger\TaskReport.xls" -c -T -S 10.68.10.184'              
+ EXEC master..xp_cmdshell @cmd  
+
+  EXEC master..xp_cmdShell 'makecab K:\EmailTrigger\TaskReport.xls K:\EmailTrigger\TaskReport.cab',NO_OUTPUT  
+                   
+ SET @EmailBodyHTML =N'<CENTER><font face="arial"><H1>ReconSMART Task Report</H1><hr></CENTER><left>'+ @ReportDate +              
+  N'<br><br>Hi All,<br><br>              
+    Please find the  ReconSmart - Task Report attached.<br>              
+  <br>              
+  Kindly let us know in case of any issues in this regard.<br><br>              
+  Kind Regards,<br>              
+  ReconSmart Team</LEFT>'              
+              
+  EXEC msdb.dbo.sp_send_dbmail              
+  @profile_name = 'ReconSmart',              
+  @file_attachments ='K:\EmailTrigger\TaskReport.cab',  
+  @recipients = @email_recipients,              
+  @copy_recipients = @email_copyrecipients,              
+  @subject = N'ReconSmart : Task Report',              
+  @body=@EmailBodyHTML,              
+  @importance = High,              
+  @body_format = 'HTML' ;              
+              
+END        
+
+
+GO
+/****** Object:  StoredProcedure [dbo].[EmailTrigger1]    Script Date: 7/23/2020 2:16:27 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+  
+CREATE PROCEDURE [dbo].[EmailTrigger1]              
+--@email_recipients varchar(8000)= 'gagana.ramesh.naik@accenture.com',              
+--@email_copyrecipients VARCHAR(8000)= 'gagana.ramesh.naik@accenture.com' 
+
+@email_recipients varchar(8000)= 'gagana.ramesh.naik@accenture.com;unnati.ghodki@accenture.com;t.a.tyagi@accenture.com;suthari.narmada@accenture.com',              
+@email_copyrecipients VARCHAR(8000)= 'jaya.a.pandey@accenture.com;narender.g.singh@accenture.com'                
+              
+AS              
+BEGIN              
+             
+ SET NOCOUNT ON;         
+        
+ DECLARE @EmailBodyHTML NVARCHAR(MAX)              
+ DECLARE @ReportDate nvarchar(max)              
+             
+--         @email_recipients varchar(8000),              
+--   @email_copyrecipients VARCHAR(8000)    
+       
+              
+ SET @ReportDate =  CONVERT(NVARCHAR,GETDATE())              
+   
+              
+                 
+ DECLARE @cmd nvarchar(4000)              
+        
+  
+SET @cmd=''              
+   
+ SET @cmd='bcp "exec ReconSmart_Engie_DB..TaskReport" queryout "K:\EmailTrigger\TaskReport.xls" -c -T -S 10.68.10.184'              
+ EXEC master..xp_cmdshell @cmd  
+
+  EXEC master..xp_cmdShell 'makecab K:\EmailTrigger\TaskReport.xls K:\EmailTrigger\TaskReport.cab',NO_OUTPUT  
+                   
+ SET @EmailBodyHTML =N'<CENTER><font face="arial"><H1>ReconSMART Task Report</H1><hr></CENTER><left>'+ @ReportDate +              
+  N'<br><br>Hi All,<br><br>              
+    Please find the  ReconSmart - Task Report attached.<br>              
+  <br>              
+  Kindly let us know in case of any issues in this regard.<br><br>              
+  Kind Regards,<br>              
+  ReconSmart Team</LEFT>'              
+              
+  EXEC msdb.dbo.sp_send_dbmail              
+  @profile_name = 'ReconSmart',              
+  @file_attachments ='K:\EmailTrigger\TaskReport.cab',  
+  @recipients = @email_recipients,              
+  @copy_recipients = @email_copyrecipients,              
+  @subject = N'ReconSmart : Task Report',              
+  @body=@EmailBodyHTML,              
+  @importance = High,              
+  @body_format = 'HTML' ;              
+              
+END        
+
+
+GO
+/****** Object:  StoredProcedure [dbo].[sp_Cust_Task_Report]    Script Date: 7/23/2020 2:16:27 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER OFF
+GO
+
+CREATE PROCEDURE [dbo].[sp_Cust_Task_Report]        
+@StartDate datetime,        
+@EndDate datetime        
+        
+AS        
+BEGIN     
+    
+--Get Lastupdate on  
+Declare @LastUpdatedon DATETIME;  
+  
+--Retrieve all the task attribute values        
+SELECT T.TaskId        
+ ,T.NodeId       
+ ,A.AttributeName        
+ ,tav.AttributeValue        
+INTO #temp        
+FROM Task T        
+INNER JOIN TaskAttributeValue TAV ON T.TaskId = TAV.TaskId        
+ --AND T.IsActive = 1        
+ AND TAV.IsActive = 1        
+INNER JOIN Attribute A ON A.AttributeId = TAV.AttributeId        
+ --AND A.IsActive = 1        
+WHERE A.AttributeName IN (        
+  'TaskName'        
+  ,'StartDate'        
+  ,'StartTime'        
+  ,'EndDate'        
+  ,'EndTime'        
+  ,'Nature of Close'         
+  ,'Dependency Tagging'        
+  ,'WFH Applicable'        
+  ,'BCP'        
+  ,'Stage'        
+  ,'Criticality'        
+  ,'MD Name'        
+  ,'PeriodId'       
+  ,'LastUpdatedon'  
+  )        
+AND (T.CreatedOn between @StartDate and @EndDate OR T.LastUpdatedOn between @StartDate and @EndDate OR  TAV.LastUpdatedOn between @StartDate and @EndDate)        
+  
+
+--Pivot to cols        
+SELECT *        
+INTO #PivotTable        
+FROM #temp AS s        
+PIVOT(MAX(AttributeValue) FOR [AttributeName] IN (        
+   [TaskName]        
+   ,[StartDate]        
+   ,[StartTime]        
+   ,[EndDate]        
+   ,[EndTime]        
+   ,[Nature of Close]        
+   ,[Dependency Tagging]        
+   ,[WFH Applicable]        
+   ,[BCP]        
+   ,[Stage]        
+   ,[Criticality]        
+   ,[MD Name]        
+   ,[PeriodId]    
+   ,[LastUpdatedon]  
+   )) AS p    
+     
+SELECT        
+ T.Taskid        
+ ,'Engie' AS ClientName        
+ ,STUFF('_Engie' + '_' + CAST([T].[TaskId] AS VARCHAR) + '', 1, 1, '') AS [CNTaskIdUnique]       
+ ,T.IsActive    
+ ,p.StartDate        
+ ,p.StartTime        
+ ,p.EndDate        
+ ,p.EndTime        
+ ,p.Stage        
+ ,p.PeriodId        
+ ,p.Criticality        
+ ,p.[Nature of Close] as Nature_of_Close        
+ ,p.[Dependency Tagging] as Dependency_Tagging        
+ ,p.[WFH Applicable] as WFH_applicable        
+ ,HN1.NodeName AS Process        
+ ,p.BCP        
+ ,T.CreatedOn        
+ ,CASE   
+ WHEN p.LastUpdatedon is NULL THEN TAV.LastUpdatedOn  
+ ELSE p.LastUpdatedon  
+ END as Last_updated_date       
+ ,U.UserName AS Created_By        
+ ,Usr1.UserName AS Last_Updated_By        
+ ,UserDetails.Preparer as User_Preparer        
+ ,UserDetails.Reviewer as User_Reviewer        
+ ,UserDetails.Approver as User_Approver        
+ ,UserDetails1.PrepOrganization as Org_Preparer        
+ ,UserDetails1.RevOrganization as Org_Reviewer        
+ ,UserDetails1.AppOrganization as Org_Approver        
+ ,HN3.NodeName as Delivery_Location        
+ ,p.[MD Name] as MD_Name      
+FROM Task T      
+INNER JOIN #PivotTable P ON p.TaskId = T.TaskId        
+inner join TaskAttributeValue TAV On T.TaskId = TAV.TaskId and TAV.AttributeId = 14
+LEFT JOIN [User] U ON u.UserId = T.CreatedBy        
+LEFT JOIN [User] Usr1 ON usr1.UserId = T.LastUpdatedBy        
+LEFT JOIN [dbo].[HierarchyNode] [HN1] ON [HN1].NodeId = [T].NodeId        
+ AND [HN1].IsActive = 1        
+ --AND [T].IsActive = 1        
+ AND [T].IsMasterTask = 0        
+JOIN [dbo].[HierarchyLevel] [HL] ON [HL].LevelId = [HN1].LevelId        
+ AND [HL].IsActive = 1        
+ AND [HL].LevelName = 'Process'        
+LEFT JOIN [dbo].[HierarchyNode] [HN2] ON [HN2].NodeId = [T].NodeId        
+ AND [HN2].IsActive = 1        
+-- AND [T].IsActive = 1        
+ AND [T].IsMasterTask = 0        
+JOIN [dbo].[HierarchyNode] [HN3] ON [HN2].ParentNodeId = [HN3].NodeId         
+ AND [HN3].IsActive = 1              
+    JOIN [dbo].[HierarchyLevel] [HL1] on [HL1].LevelId=[HN3].LevelId         
+    AND [HL1].IsActive=1 AND [HL1].LevelName='DeliveryLoc_Tower'              
+JOIN (        
+ SELECT Taskid        
+  ,Preparer        
+  ,Reviewer        
+  ,Approver        
+ FROM (        
+  SELECT C.[TaskId]        
+   ,'Preparer' AS AttributeName        
+   ,STUFF(CA.[User], 1, 1, '') AS [AttributeValue]        
+  FROM (        
+   SELECT tt.*        
+    ,(u.FirstName + ' ' + u.LastName) AS UserName        
+    ,tr.TaskRoleName        
+   FROM Task AS tt        
+   INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId        
+    AND tu.IsActive = 1        
+   INNER JOIN [User] u ON u.UserId = tu.UserId        
+   INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId        
+   INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId        
+    AND tr.TaskRoleName = 'Preparer'        
+   ) AS C        
+  CROSS APPLY (        
+   SELECT '; ' + E.[UserName]        
+   FROM (        
+    SELECT tt.*        
+,(u.FirstName + ' ' + u.LastName) AS UserName        
+     ,tr.TaskRoleName        
+    FROM Task AS tt        
+    INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId        
+     AND tu.IsActive = 1        
+    INNER JOIN [User] u ON u.UserId = tu.UserId        
+    INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId        
+    INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId        
+     AND tr.TaskRoleName = 'Preparer'        
+    ) AS E        
+   WHERE C.TaskId = E.TaskId        
+   ORDER BY E.TaskId        
+   FOR XML PATH('')        
+   ) CA([User])        
+          
+  UNION        
+      SELECT DISTINCT C.[TaskId]        
+   ,'Reviewer' AS AttributeName        
+   ,STUFF(CA.[User], 1, 1, '') AS [AttributeValue]        
+  FROM (        
+   SELECT tt.*        
+    ,(u.FirstName + ' ' + u.LastName) AS UserName        
+    ,tr.TaskRoleName        
+   FROM Task AS tt        
+   INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId        
+    AND tu.IsActive = 1        
+   INNER JOIN [User] u ON u.UserId = tu.UserId        
+   INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId        
+   INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId        
+    AND tr.TaskRoleName = 'Reviewer'        
+   ) AS C        
+  CROSS APPLY (        
+   SELECT '; ' + E.[UserName]        
+   FROM (        
+    SELECT tt.*        
+     ,(u.FirstName + ' ' + u.LastName) AS UserName        
+     ,tr.TaskRoleName        
+    FROM Task AS tt        
+    INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId        
+     AND tu.IsActive = 1        
+    INNER JOIN [User] u ON u.UserId = tu.UserId        
+    INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId        
+    INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId        
+     AND tr.TaskRoleName = 'Reviewer'        
+    ) AS E        
+   WHERE C.TaskId = E.TaskId        
+   ORDER BY E.TaskId        
+   FOR XML PATH('')        
+   ) CA([User])        
+          
+  UNION        
+          
+  SELECT DISTINCT C.[TaskId]        
+   ,'Approver' AS AttributeName        
+   ,STUFF(CA.[User], 1, 1, '') AS [AttributeValue]        
+  FROM (        
+   SELECT tt.*        
+    ,(u.FirstName + ' ' + u.LastName) AS UserName        
+    ,tr.TaskRoleName        
+   FROM Task AS tt        
+   INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId        
+    AND tu.IsActive = 1        
+   INNER JOIN [User] u ON u.UserId = tu.UserId        
+   INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId        
+   INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId        
+    AND tr.TaskRoleName = 'Approver'        
+   ) AS C        
+  CROSS APPLY (        
+   SELECT '; ' + E.[UserName]        
+   FROM (        
+    SELECT tt.*        
+     ,(u.FirstName + ' ' + u.LastName) AS UserName        
+     ,tr.TaskRoleName        
+    FROM Task AS tt        
+    INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId        
+     AND tu.IsActive = 1        
+    INNER JOIN [User] u ON u.UserId = tu.UserId        
+    INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId        
+    INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId        
+     AND tr.TaskRoleName = 'Approver'        
+    ) AS E        
+   WHERE C.TaskId = E.TaskId        
+   ORDER BY E.TaskId        
+   FOR XML PATH('')        
+   ) CA([User])        
+  ) AS SourceTable        
+ Pivot(MIN(AttributeValue) --Needs to be an aggregate function                      
+   FOR [AttributeName] IN (        
+    Preparer        
+    ,Reviewer        
+    ,Approver        
+    )) AS PivotOutput        
+ ) AS [UserDetails] ON [T].[Taskid] = [UserDetails].TaskId        
+ --AND [T].IsActive = 1        
+JOIN (        
+ SELECT Taskid        
+  ,PrepOrganization        
+  ,RevOrganization        
+  ,AppOrganization        
+ FROM (        
+  SELECT C.[TaskId]        
+   ,'PrepOrganization' AS AttributeName        
+   ,STUFF(CA.[OrganizationName], 1, 1, '') AS [AttributeValue]        
+  FROM (        
+   SELECT tt.*        
+    ,(u.FirstName + ' ' + u.LastName) AS UserName        
+    ,tr.TaskRoleName        
+    ,o.OrganizationName        
+   FROM Task AS tt        
+   INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId        
+    AND tu.IsActive = 1        
+   INNER JOIN [User] u ON u.UserId = tu.UserId        
+   INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId        
+   INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId        
+    AND tr.TaskRoleName = 'Preparer'        
+   INNER JOIN Organization o ON u.OrganizationId = o.OrganizationId --and o.IsActive=1 and u.IsActive=1                
+   ) AS C        
+  CROSS APPLY (        
+   SELECT '; ' + E.[OrganizationName]        
+   FROM (        
+    SELECT tt.*        
+     ,(u.FirstName + ' ' + u.LastName) AS UserName        
+     ,tr.TaskRoleName        
+     ,o.OrganizationName        
+    FROM Task AS tt        
+    INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId        
+     AND tu.IsActive = 1        
+    INNER JOIN [User] u ON u.UserId = tu.UserId        
+    INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId        
+    INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId        
+     AND tr.TaskRoleName = 'Preparer'        
+    INNER JOIN Organization o ON u.OrganizationId = o.OrganizationId -- and o.IsActive=1 and u.IsActive=1                
+    ) AS E        
+   WHERE C.TaskId = E.TaskId        
+   ORDER BY E.TaskId        
+   FOR XML PATH('')        
+   ) CA([OrganizationName])        
+          
+  UNION        
+          
+  SELECT DISTINCT C.[TaskId]        
+   ,'RevOrganization' AS AttributeName        
+   ,STUFF(CA.[OrganizationName], 1, 1, '') AS [AttributeValue]        
+  FROM (        
+   SELECT tt.*        
+    ,(u.FirstName + ' ' + u.LastName) AS UserName        
+    ,tr.TaskRoleName        
+    ,o.OrganizationName        
+   FROM Task AS tt        
+   INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId        
+    AND tu.IsActive = 1        
+   INNER JOIN [User] u ON u.UserId = tu.UserId        
+   INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId        
+   INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId        
+    AND tr.TaskRoleName = 'Reviewer'        
+   INNER JOIN Organization o ON u.OrganizationId = o.OrganizationId --and o.IsActive=1 and u.IsActive=1                      
+   ) AS C        
+  CROSS APPLY (        
+   SELECT '; ' + E.[OrganizationName]        
+   FROM (        
+    SELECT tt.*        
+     ,(u.FirstName + ' ' + u.LastName) AS UserName        
+     ,tr.TaskRoleName        
+     ,o.OrganizationName        
+    FROM Task AS tt        
+    INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId        
+     AND tu.IsActive = 1        
+    INNER JOIN [User] u ON u.UserId = tu.UserId        
+    INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId        
+    INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId        
+     AND tr.TaskRoleName = 'Reviewer'        
+    INNER JOIN Organization o ON u.OrganizationId = o.OrganizationId --and o.IsActive=1 and u.IsActive=1               
+    ) AS E        
+   WHERE C.TaskId = E.TaskId        
+   ORDER BY E.TaskId        
+   FOR XML PATH('')        
+   ) CA([OrganizationName])        
+          
+  UNION        
+          
+  SELECT DISTINCT C.[TaskId]        
+   ,'AppOrganization' AS AttributeName        
+   ,STUFF(CA.[OrganizationName], 1, 1, '') AS [AttributeValue]        
+  FROM (        
+   SELECT tt.*        
+    ,(u.FirstName + ' ' + u.LastName) AS UserName            ,tr.TaskRoleName        
+    ,o.OrganizationName        
+   FROM Task AS tt        
+   INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId        
+    AND tu.IsActive = 1        
+   INNER JOIN [User] u ON u.UserId = tu.UserId        
+   INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId        
+   INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId        
+    AND tr.TaskRoleName = 'Approver'        
+   INNER JOIN Organization o ON u.OrganizationId = o.OrganizationId --and o.IsActive=1 and u.IsActive=1               
+   ) AS C        
+  CROSS APPLY (        
+   SELECT '; ' + E.[OrganizationName]        
+   FROM (        
+    SELECT tt.*        
+     ,(u.FirstName + ' ' + u.LastName) AS UserName        
+     ,tr.TaskRoleName        
+     ,o.OrganizationName        
+    FROM Task AS tt        
+    INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId        
+     AND tu.IsActive = 1        
+   INNER JOIN [User] u ON u.UserId = tu.UserId        
+    INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId        
+    INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId        
+     AND tr.TaskRoleName = 'Approver'        
+    INNER JOIN Organization o ON u.OrganizationId = o.OrganizationId --and o.IsActive=1 and u.IsActive=1               
+    ) AS E        
+   WHERE C.TaskId = E.TaskId        
+   ORDER BY E.TaskId        
+   FOR XML PATH('')        
+   ) CA([OrganizationName])        
+  ) AS SourceTable        
+ Pivot(MIN(AttributeValue) --Needs to be an aggregate function                      
+   FOR [AttributeName] IN (        
+    PrepOrganization        
+    ,RevOrganization        
+    ,AppOrganization        )) AS PivotOutput        
+ ) AS [UserDetails1] ON [T].[Taskid] = [UserDetails1].TaskId        
+ --AND [T].IsActive = 1        
+LEFT JOIN [dbo].[User] [U1] ON [T].LastUpdatedBy = [U1].[UserId]        
+ AND [U1].[IsActive] = 1        
+ --AND [T].[IsActive] = 1        
+ AND [T].[IsMasterTask] = 0      
+   
+drop table #temp
+drop table #Pivottable
+END
+
+
+
+
+GO
+/****** Object:  StoredProcedure [dbo].[sp_Cust_Task_Report_DueDay]    Script Date: 7/23/2020 2:16:27 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+--print getdate()  
+  
+CREATE PROCEDURE [dbo].[sp_Cust_Task_Report_DueDay]
+@StartDate datetime,    
+@EndDate datetime    
+    
+AS    
+BEGIN    
+--Retrieve all the task attribute values    
+SELECT T.TaskId    
+ ,T.NodeId    
+ ,A.AttributeName    
+ ,tav.AttributeValue    
+INTO #temp    
+FROM Task T    
+INNER JOIN TaskAttributeValue TAV ON T.TaskId = TAV.TaskId    
+ AND T.IsActive = 1    
+ AND TAV.IsActive = 1    
+INNER JOIN Attribute A ON A.AttributeId = TAV.AttributeId    
+ AND A.IsActive = 1    
+WHERE A.AttributeName IN (    
+  'TaskName'    
+  ,'StartDate'    
+  ,'StartTime'    
+  ,'EndDate'    
+  ,'EndTime'    
+  ,'Nature of Close'     
+  ,'Dependency Tagging'    
+  ,'WFH Applicable'    
+  ,'BCP'    
+  ,'Stage'    
+  ,'Criticality'    
+  ,'MD Name'    
+  ,'PeriodId'    
+  )    
+--AND (T.CreatedOn between @StartDate and @EndDate OR  between @StartDate and @EndDate)    
+    
+--Pivot to cols    
+SELECT *    
+INTO #PivotTable    
+FROM #temp AS s    
+PIVOT(MAX(AttributeValue) FOR [AttributeName] IN (    
+   [TaskName]    
+   ,[StartDate]    
+   ,[StartTime]    
+   ,[EndDate]    
+   ,[EndTime]    
+   ,[Nature of Close]    
+   ,[Dependency Tagging]    
+   ,[WFH Applicable]    
+   ,[BCP]    
+   ,[Stage]    
+   ,[Criticality]    
+   ,[MD Name]    
+   ,[PeriodId]    
+   )) AS p   where  (p.EndDate between @StartDate and @EndDate)
+    --where ((p.StartDate between @StartDate and @EndDate) AND
+   
+SELECT    
+ T.Taskid    
+ ,'Engie' AS ClientName    
+ ,STUFF('_Engie' + '_' + CAST([T].[TaskId] AS VARCHAR) + '', 1, 1, '') AS [CNTaskIdUnique]    
+ ,p.StartDate    
+ ,p.StartTime    
+ ,p.EndDate    
+ ,p.EndTime    
+ ,p.Stage    
+ ,p.PeriodId    
+ ,p.Criticality    
+ ,p.[Nature of Close] as Nature_of_Close    
+ ,p.[Dependency Tagging] as Dependency_Tagging    
+ ,p.[WFH Applicable] as WFH_applicable    
+ ,HN1.NodeName AS Process    
+ ,p.BCP    
+ ,T.CreatedOn    
+ ,T.LastUpdatedOn as Last_updated_date    
+ ,U.UserName AS Created_By    
+ ,Usr1.UserName AS Last_Updated_By    
+ ,UserDetails.Preparer as User_Preparer    
+ ,UserDetails.Reviewer as User_Reviewer    
+ ,UserDetails.Approver as User_Approver    
+ ,UserDetails1.PrepOrganization as Org_Preparer    
+ ,UserDetails1.RevOrganization as Org_Reviewer    
+ ,UserDetails1.AppOrganization as Org_Approver    
+ ,HN3.NodeName as Delivery_Location    
+ ,p.[MD Name] as MD_Name    
+FROM Task T    
+INNER JOIN #PivotTable P ON p.TaskId = T.TaskId    
+LEFT JOIN [User] U ON u.UserId = T.CreatedBy    
+LEFT JOIN [User] Usr1 ON usr1.UserId = T.LastUpdatedBy    
+LEFT JOIN [dbo].[HierarchyNode] [HN1] ON [HN1].NodeId = [T].NodeId    
+ AND [HN1].IsActive = 1    
+ AND [T].IsActive = 1    
+ AND [T].IsMasterTask = 0    
+JOIN [dbo].[HierarchyLevel] [HL] ON [HL].LevelId = [HN1].LevelId    
+ AND [HL].IsActive = 1    
+ AND [HL].LevelName = 'Process'    
+LEFT JOIN [dbo].[HierarchyNode] [HN2] ON [HN2].NodeId = [T].NodeId    
+ AND [HN2].IsActive = 1    
+ AND [T].IsActive = 1    
+ AND [T].IsMasterTask = 0    
+JOIN [dbo].[HierarchyNode] [HN3] ON [HN2].ParentNodeId = [HN3].NodeId     
+ AND [HN3].IsActive = 1          
+    JOIN [dbo].[HierarchyLevel] [HL1] on [HL1].LevelId=[HN3].LevelId     
+    AND [HL1].IsActive=1 AND [HL1].LevelName='DeliveryLoc_Tower'          
+JOIN (    
+ SELECT Taskid    
+  ,Preparer    
+  ,Reviewer    
+  ,Approver    
+ FROM (    
+  SELECT C.[TaskId]    
+   ,'Preparer' AS AttributeName    
+   ,STUFF(CA.[User], 1, 1, '') AS [AttributeValue]    
+  FROM (    
+   SELECT tt.*    
+    ,(u.FirstName + ' ' + u.LastName) AS UserName    
+    ,tr.TaskRoleName    
+   FROM Task AS tt    
+   INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId    
+    AND tu.IsActive = 1    
+   INNER JOIN [User] u ON u.UserId = tu.UserId    
+   INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId    
+   INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId    
+    AND tr.TaskRoleName = 'Preparer'    
+   ) AS C    
+  CROSS APPLY (    
+   SELECT '; ' + E.[UserName]    
+   FROM (    
+    SELECT tt.*    
+     ,(u.FirstName + ' ' + u.LastName) AS UserName    
+     ,tr.TaskRoleName    
+    FROM Task AS tt    
+    INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId    
+     AND tu.IsActive = 1    
+    INNER JOIN [User] u ON u.UserId = tu.UserId    
+    INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId    
+    INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId    
+     AND tr.TaskRoleName = 'Preparer'    
+    ) AS E    
+   WHERE C.TaskId = E.TaskId    
+   ORDER BY E.TaskId    
+   FOR XML PATH('')    
+   ) CA([User])    
+      
+  UNION    
+      SELECT DISTINCT C.[TaskId]    
+   ,'Reviewer' AS AttributeName    
+   ,STUFF(CA.[User], 1, 1, '') AS [AttributeValue]    
+  FROM (    
+   SELECT tt.*    
+    ,(u.FirstName + ' ' + u.LastName) AS UserName    
+    ,tr.TaskRoleName    
+   FROM Task AS tt    
+   INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId    
+    AND tu.IsActive = 1    
+   INNER JOIN [User] u ON u.UserId = tu.UserId    
+   INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId    
+   INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId    
+    AND tr.TaskRoleName = 'Reviewer'    
+   ) AS C    
+  CROSS APPLY (    
+   SELECT '; ' + E.[UserName]    
+   FROM (    
+    SELECT tt.*    
+     ,(u.FirstName + ' ' + u.LastName) AS UserName    
+     ,tr.TaskRoleName    
+    FROM Task AS tt    
+    INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId    
+     AND tu.IsActive = 1    
+    INNER JOIN [User] u ON u.UserId = tu.UserId    
+    INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId    
+    INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId    
+     AND tr.TaskRoleName = 'Reviewer'    
+    ) AS E    
+   WHERE C.TaskId = E.TaskId    
+   ORDER BY E.TaskId    
+   FOR XML PATH('')    
+   ) CA([User])    
+      
+  UNION    
+      
+  SELECT DISTINCT C.[TaskId]    
+   ,'Approver' AS AttributeName    
+   ,STUFF(CA.[User], 1, 1, '') AS [AttributeValue]    
+  FROM (    
+   SELECT tt.*    
+    ,(u.FirstName + ' ' + u.LastName) AS UserName    
+    ,tr.TaskRoleName    
+   FROM Task AS tt    
+   INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId    
+    AND tu.IsActive = 1    
+   INNER JOIN [User] u ON u.UserId = tu.UserId    
+   INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId    
+   INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId    
+    AND tr.TaskRoleName = 'Approver'    
+   ) AS C    
+  CROSS APPLY (    
+   SELECT '; ' + E.[UserName]    
+   FROM (    
+    SELECT tt.*    
+     ,(u.FirstName + ' ' + u.LastName) AS UserName    
+     ,tr.TaskRoleName    
+    FROM Task AS tt    
+    INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId    
+     AND tu.IsActive = 1    
+    INNER JOIN [User] u ON u.UserId = tu.UserId    
+    INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId    
+    INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId    
+     AND tr.TaskRoleName = 'Approver'    
+    ) AS E    
+   WHERE C.TaskId = E.TaskId    
+   ORDER BY E.TaskId    
+   FOR XML PATH('')    
+   ) CA([User])    
+  ) AS SourceTable    
+ Pivot(MIN(AttributeValue) --Needs to be an aggregate function                  
+   FOR [AttributeName] IN (    
+    Preparer    
+    ,Reviewer    
+    ,Approver    
+    )) AS PivotOutput    
+ ) AS [UserDetails] ON [T].[Taskid] = [UserDetails].TaskId    
+ AND [T].IsActive = 1    
+JOIN (    
+ SELECT Taskid    
+  ,PrepOrganization    
+  ,RevOrganization    
+  ,AppOrganization    
+ FROM (    
+  SELECT C.[TaskId]    
+   ,'PrepOrganization' AS AttributeName    
+   ,STUFF(CA.[OrganizationName], 1, 1, '') AS [AttributeValue]    
+  FROM (    
+   SELECT tt.*    
+    ,(u.FirstName + ' ' + u.LastName) AS UserName    
+    ,tr.TaskRoleName    
+    ,o.OrganizationName    
+   FROM Task AS tt    
+   INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId    
+    AND tu.IsActive = 1    
+   INNER JOIN [User] u ON u.UserId = tu.UserId    
+   INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId    
+   INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId    
+    AND tr.TaskRoleName = 'Preparer'    
+   INNER JOIN Organization o ON u.OrganizationId = o.OrganizationId --and o.IsActive=1 and u.IsActive=1            
+   ) AS C    
+  CROSS APPLY (    
+   SELECT '; ' + E.[OrganizationName]    
+   FROM (    
+    SELECT tt.*    
+     ,(u.FirstName + ' ' + u.LastName) AS UserName    
+     ,tr.TaskRoleName    
+     ,o.OrganizationName    
+    FROM Task AS tt    
+    INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId    
+     AND tu.IsActive = 1    
+    INNER JOIN [User] u ON u.UserId = tu.UserId    
+    INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId    
+    INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId    
+     AND tr.TaskRoleName = 'Preparer'    
+    INNER JOIN Organization o ON u.OrganizationId = o.OrganizationId -- and o.IsActive=1 and u.IsActive=1            
+    ) AS E    
+   WHERE C.TaskId = E.TaskId    
+   ORDER BY E.TaskId    
+   FOR XML PATH('')    
+   ) CA([OrganizationName])    
+      
+  UNION    
+      
+  SELECT DISTINCT C.[TaskId]    
+   ,'RevOrganization' AS AttributeName    
+   ,STUFF(CA.[OrganizationName], 1, 1, '') AS [AttributeValue]    
+  FROM (    
+   SELECT tt.*    
+    ,(u.FirstName + ' ' + u.LastName) AS UserName    
+    ,tr.TaskRoleName    
+    ,o.OrganizationName    
+   FROM Task AS tt    
+   INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId    
+    AND tu.IsActive = 1    
+   INNER JOIN [User] u ON u.UserId = tu.UserId    
+   INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId    
+   INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId    
+    AND tr.TaskRoleName = 'Reviewer'    
+   INNER JOIN Organization o ON u.OrganizationId = o.OrganizationId --and o.IsActive=1 and u.IsActive=1                  
+   ) AS C    
+  CROSS APPLY (    
+   SELECT '; ' + E.[OrganizationName]    
+   FROM (    
+    SELECT tt.*    
+     ,(u.FirstName + ' ' + u.LastName) AS UserName    
+     ,tr.TaskRoleName    
+     ,o.OrganizationName    
+    FROM Task AS tt    
+    INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId    
+     AND tu.IsActive = 1    
+    INNER JOIN [User] u ON u.UserId = tu.UserId    
+    INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId    
+    INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId    
+     AND tr.TaskRoleName = 'Reviewer'    
+    INNER JOIN Organization o ON u.OrganizationId = o.OrganizationId --and o.IsActive=1 and u.IsActive=1           
+    ) AS E    
+   WHERE C.TaskId = E.TaskId    
+   ORDER BY E.TaskId    
+   FOR XML PATH('')    
+   ) CA([OrganizationName])    
+      
+  UNION    
+      
+  SELECT DISTINCT C.[TaskId]    
+   ,'AppOrganization' AS AttributeName    
+   ,STUFF(CA.[OrganizationName], 1, 1, '') AS [AttributeValue]    
+  FROM (    
+   SELECT tt.*    
+    ,(u.FirstName + ' ' + u.LastName) AS UserName    
+    ,tr.TaskRoleName    
+    ,o.OrganizationName    
+   FROM Task AS tt    
+   INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId    
+    AND tu.IsActive = 1    
+   INNER JOIN [User] u ON u.UserId = tu.UserId    
+   INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId    
+   INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId    
+    AND tr.TaskRoleName = 'Approver'    
+   INNER JOIN Organization o ON u.OrganizationId = o.OrganizationId --and o.IsActive=1 and u.IsActive=1           
+   ) AS C    
+  CROSS APPLY (    
+   SELECT '; ' + E.[OrganizationName]    
+   FROM (    
+    SELECT tt.*    
+     ,(u.FirstName + ' ' + u.LastName) AS UserName    
+     ,tr.TaskRoleName    
+     ,o.OrganizationName    
+    FROM Task AS tt    
+    INNER JOIN TaskWorkFlowUserRoleMap tu ON tu.TaskId = tt.TaskId    
+     AND tu.IsActive = 1    
+    INNER JOIN [User] u ON u.UserId = tu.UserId    
+    INNER JOIN WorkflowRole wr ON wr.WorkflowRoleId = tu.WorkflowRoleId    
+    INNER JOIN TaskRole tr ON tr.TaskRoleId = wr.TaskRoleId    
+     AND tr.TaskRoleName = 'Approver'    
+    INNER JOIN Organization o ON u.OrganizationId = o.OrganizationId --and o.IsActive=1 and u.IsActive=1           
+    ) AS E    
+   WHERE C.TaskId = E.TaskId    
+   ORDER BY E.TaskId    
+   FOR XML PATH('')    
+   ) CA([OrganizationName])    
+  ) AS SourceTable    
+ Pivot(MIN(AttributeValue) --Needs to be an aggregate function                  
+   FOR [AttributeName] IN (    
+    PrepOrganization    
+    ,RevOrganization    
+    ,AppOrganization        )) AS PivotOutput    
+ ) AS [UserDetails1] ON [T].[Taskid] = [UserDetails1].TaskId    
+ AND [T].IsActive = 1    
+LEFT JOIN [dbo].[User] [U1] ON [T].LastUpdatedBy = [U1].[UserId]    
+ AND [U1].[IsActive] = 1    
+ AND [T].[IsActive] = 1    
+ AND [T].[IsMasterTask] = 0   
+ 
+ --Where P.EndDate=GETDATE() 
+END
+
+
+
+
+
+
+GO
+/****** Object:  StoredProcedure [dbo].[sp_TaskCount]    Script Date: 7/23/2020 2:16:27 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE procedure [dbo].[sp_TaskCount]
+as
+begin
+delete from TaskCount
+insert into TaskCount select 'ENEL',count(taskId) from Reconsmart_ENEL_DB..task where IsActive=1
+insert into TaskCount select 'TWE',count(taskId) from Reconsmart_Treasury_DB..task where IsActive=1 
+insert into TaskCount select 'Repsol',count(taskId) from Reconsmart_Repsol_DB..task where IsActive=1
+insert into TaskCount select 'Davide',count(taskId) from Reconsmart_Davide_DB..task where IsActive=1
+insert into TaskCount select 'BK',count(taskId) from Reconsmart_BK_DB..task where IsActive=1
+insert into TaskCount select 'KH',count(taskId) from Reconsmart_KH_DB..task where IsActive=1
+insert into TaskCount select 'Singtel',count(taskId) from Reconsmart_Singtel_DB..task where IsActive=1
+insert into TaskCount select 'Johnson',count(taskId) from Reconsmart_Johnson_DB..task where IsActive=1
+insert into TaskCount select 'Optus',count(taskId) from Reconsmart_Optus_DB..task where IsActive=1
+insert into TaskCount select 'VirginMedia',count(taskId) from Reconsmart_VirginMedia_DB..task where IsActive=1
+insert into TaskCount select 'NCR',count(taskId) from Reconsmart_NCR_DB..task where IsActive=1
+insert into TaskCount select 'GKH',count(taskId) from Reconsmart_GKH_DB..task where IsActive=1
+insert into TaskCount select 'Haliburton',count(taskId) from Reconsmart_Halliburton_DB..task where IsActive=1
+insert into TaskCount select 'BHGE',count(taskId) from Reconsmart_BHGE_DB..task where IsActive=1
+insert into TaskCount select 'Ascena',count(taskId) from Reconsmart_Ascena_DB..task where IsActive=1
+insert into TaskCount select 'Centrica',count(taskId) from Reconsmart_Centrica_DB..task where IsActive=1
+insert into TaskCount select 'AEP',count(taskId) from Reconsmart_AEP_DB..task where IsActive=1
+insert into TaskCount select 'FedEx',count(taskId) from Reconsmart_FedEX_DB..task where IsActive=1
+insert into TaskCount select 'PB',count(taskId) from Reconsmart_PB_DB..task where IsActive=1
+insert into TaskCount select 'StarHub',count(taskId) from Reconsmart_StarHub_DB..task where IsActive=1
+insert into TaskCount select 'TDC',count(taskId) from Reconsmart_TDC_DB..task where IsActive=1
+insert into TaskCount select 'UTC',count(taskId) from Reconsmart_UTC_DB..task where IsActive=1
+insert into TaskCount select 'Schlumberger',count(taskId) from Reconsmart_Schlumberger_DB..task where IsActive=1
+insert into TaskCount select 'TH',count(taskId) from Reconsmart_TH_DB..task where IsActive=1
+insert into TaskCount select 'Lenovo',count(taskId) from Reconsmart_Lenovo_DB..task where IsActive=1
+insert into TaskCount select 'Engie',count(taskId) from Reconsmart_Engie_DB..task where IsActive=1
+insert into TaskCount select 'Crocs',count(taskId) from Reconsmart_Crocs_DB..task where IsActive=1
+insert into TaskCount select 'KF',count(taskId) from Reconsmart_KF_DB..task where IsActive=1
+insert into TaskCount select 'Canon',count(taskId) from Reconsmart_Canon_DB..task where IsActive=1
+insert into TaskCount select 'Averda',count(taskId) from Reconsmart_Averda_DB..task where IsActive=1
+insert into TaskCount select 'TNS',count(taskId) from Reconsmart_TNS_DB..task where IsActive=1
+insert into TaskCount select 'Nokia',count(taskId) from Reconsmart_Nokia_DB..task where IsActive=1
+insert into TaskCount select 'Cisco',count(taskId) from Reconsmart_Cisco_DB..task where IsActive=1
+insert into TaskCount select 'IAG',count(taskId) from Reconsmart_IAG_DB..task where IsActive=1
+
+select * from TaskCount
+end
+
+
+
+
+
+GO
+/****** Object:  StoredProcedure [dbo].[sp_TaskCountwithDC]    Script Date: 7/23/2020 2:16:27 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+--exec [sp_TaskCountwithDC]
+CREATE procedure [dbo].[sp_TaskCountwithDC]
+as
+begin
+delete from TaskCountwithDC
+
+insert into TaskCountwithDC select * from Reconsmart_ENEL_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Treasury_DB..vw_TaskCountwithDC   
+insert into TaskCountwithDC select * from Reconsmart_Repsol_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Davide_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_BK_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_KH_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Singtel_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Johnson_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Optus_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_VirginMedia_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_NCR_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_GKH_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Halliburton_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_BHGE_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Ascena_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Centrica_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_AEP_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_FedEX_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_PB_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_StarHub_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_TDC_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_UTC_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Schlumberger_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_TH_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Lenovo_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Engie_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Crocs_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_KF_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Canon_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Averda_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_TNS_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Nokia_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_Cisco_DB..vw_TaskCountwithDC  
+insert into TaskCountwithDC select * from Reconsmart_IAG_DB..vw_TaskCountwithDC 
+insert into TaskCountwithDC select 'CHN_RTR', Count(taskid),'AEP' from Reconsmart_AEP_DB..Task where IsActive=1 
+
+select 'DC Names', 'Task Count', 'Client Name'
+union all
+select * from TaskCountwithDC
+end
+
+
+
+
+
+GO
+/****** Object:  StoredProcedure [dbo].[TaskCountEmailTrigger]    Script Date: 7/23/2020 2:16:27 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[TaskCountEmailTrigger]              
+@email_recipients varchar(8000)= 'anita.sah@accenture.com;narender.g.singh@accenture.com;',              
+@email_copyrecipients VARCHAR(8000)= 'gagana.ramesh.naik@accenture.com;'              
+              
+AS              
+BEGIN              
+             
+ SET NOCOUNT ON;         
+        
+ DECLARE @EmailBodyHTML NVARCHAR(MAX)              
+ DECLARE @ReportDate nvarchar(max)    
+ DECLARE @cmd nvarchar(4000)         
+             
+--         @email_recipients varchar(8000),              
+--   @email_copyrecipients VARCHAR(8000)    
+       
+              
+ SET @ReportDate =  CONVERT(NVARCHAR,GETDATE())              
+   
+              
+          
+        
+  
+SET @cmd=''              
+   
+ SET @cmd='bcp "exec Reconsmart_Engie_DB..[sp_TaskCountwithDC]" queryout "K:\EmailTrigger\TaskCountReport.xls" -c  -T -S  10.68.10.184'              
+ EXEC master..xp_cmdshell @cmd  
+                   
+ SET @EmailBodyHTML =N'<CENTER><font face="arial"><H1>ReconSMART Task Count</H1><hr></CENTER><left>'+ @ReportDate +              
+  N'<br><br>Hi All,<br><br>              
+    Please find the  ReconSmart - Task Count with DC attached.<br>              
+  <br>              
+  Kindly let us know in case of any issues in this regard.<br><br>              
+  Kind Regards,<br>              
+  ReconSmart Team</LEFT>'              
+              
+  EXEC msdb.dbo.sp_send_dbmail              
+  @profile_name = 'ReconSmart',              
+  @file_attachments ='K:\EmailTrigger\TaskCountReport.xls',  
+  @recipients = @email_recipients,              
+  @copy_recipients = @email_copyrecipients,              
+  @subject = N'ReconSmart : Task Count',              
+  @body=@EmailBodyHTML,              
+  @importance = High,              
+  @body_format = 'HTML' ;              
+              
+END        
+
+GO
+/****** Object:  StoredProcedure [dbo].[TaskReport]    Script Date: 7/23/2020 2:16:27 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+--Exec [TaskReport]
+  
+CREATE procedure [dbo].[TaskReport] as   
+Begin  
+DECLARE @ReportStartDate nvarchar(max)              
+DECLARE @ReportEndDate nvarchar(max)     
+
+  
+set @ReportStartDate=DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) - 1, 0)
+set @ReportEndDate=DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) + 1, -1)  
+ 
+
+
+delete from [TaskDetails]
+
+insert into [TaskDetails]
+exec reconsmart_Engie_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate
+  
+
+insert into [TaskDetails]
+exec Reconsmart_REPSOL_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Canon_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate 
+ 
+insert into [TaskDetails]
+exec reconsmart_AEP_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate
+  
+
+insert into [TaskDetails]
+exec Reconsmart_Ascena_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Averda_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec reconsmart_BHGE_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate
+  
+
+insert into [TaskDetails]
+exec Reconsmart_BK_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Centrica_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec reconsmart_Cisco_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate
+  
+insert into [TaskDetails]
+exec Reconsmart_Crocs_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Davide_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Enel_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_FedEX_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_GKH_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Halliburton_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_IAG_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Johnson_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_KF_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_KH_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Lenovo_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_NCR_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Nokia_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Optus_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_PB_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Schlumberger_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Singtel_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_TH_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_TNS_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_Treasury_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_VirginMedia_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_UTC_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_TDC_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+insert into [TaskDetails]
+exec Reconsmart_StarHub_DB..sp_Cust_Task_Report_DueDay @ReportStartDate,@ReportEndDate  
+
+delete from [TaskDetails] where  startdate is null or Starttime is null or Enddate is null or endtime is null
+
+(select 'TaskId' as'TaskId' ,
+'ClientName' as'ClientName' ,
+'CNTaskIdUnique' as'CNTaskIdUnique' ,
+'StartDate' as'StartDate' ,
+'StartTime' as'StartTime' ,
+'EndDate' as'EndDate' ,
+'EndTime' as'EndTime' ,
+'Stage' as'Stage' ,
+'PeriodId' as'PeriodId' ,
+'Criticality' as'Criticality' ,
+'Nature_of_Close' as'Nature_of_Close' ,
+'Dependency_Tagging' as'Dependency_Tagging' ,
+'WFH_applicable' as'WFH_applicable' ,
+'Process' as'Process' ,
+'BCP' as'BCP' ,
+'CreatedOn' as'CreatedOn' ,
+'Last_updated_date' as'Last_updated_date' ,
+'Created_By' as'Created_By' ,
+'Last_Updated_By' as'Last_Updated_By' ,
+'User_Preparer' as'User_Preparer' ,
+'User_Reviewer' as'User_Reviewer' ,
+'User_Approver' as'User_Approver' ,
+'Org_Preparer' as'Org_Preparer' ,
+'Org_Reviewer' as'Org_Reviewer' ,
+'Org_Approver' as'Org_Approver' ,
+'Delivery_Location' as'Delivery_Location' ,
+'MD_Name' as'MD_Name' )
+union all
+select * from [TaskDetails] 
+
+End  
+
+GO
+
+
+/****** Object:  Table [dbo].[TaskDetails]    Script Date: 7/23/2020 3:28:53 AM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[TaskDetails](
+	[TaskId] [nvarchar](max) NOT NULL,
+	[ClientName] [nvarchar](max) NULL,
+	[CNTaskIdUnique] [nvarchar](max) NULL,
+	[StartDate] [nvarchar](max) NULL,
+	[StartTime] [nvarchar](max) NULL,
+	[EndDate] [nvarchar](max) NULL,
+	[EndTime] [nvarchar](max) NULL,
+	[Stage] [nvarchar](max) NULL,
+	[PeriodId] [nvarchar](max) NULL,
+	[Criticality] [nvarchar](max) NULL,
+	[Nature_of_Close] [nvarchar](max) NULL,
+	[Dependency_Tagging] [nvarchar](max) NULL,
+	[WFH_applicable] [nvarchar](max) NULL,
+	[Process] [nvarchar](max) NULL,
+	[BCP] [nvarchar](max) NULL,
+	[CreatedOn] [nvarchar](max) NULL,
+	[Last_updated_date] [nvarchar](max) NULL,
+	[Created_By] [nvarchar](max) NULL,
+	[Last_Updated_By] [nvarchar](max) NULL,
+	[User_Preparer] [nvarchar](max) NULL,
+	[User_Reviewer] [nvarchar](max) NULL,
+	[User_Approver] [nvarchar](max) NULL,
+	[Org_Preparer] [nvarchar](max) NULL,
+	[Org_Reviewer] [nvarchar](max) NULL,
+	[Org_Approver] [nvarchar](max) NULL,
+	[Delivery_Location] [nvarchar](max) NULL,
+	[MD_Name] [nvarchar](max) NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+
+GO
+
+

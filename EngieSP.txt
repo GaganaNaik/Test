@@ -1,4 +1,4 @@
-USE [Reconsmart_Engie_DB]
+
 GO
 /****** Object:  StoredProcedure [dbo].[EmailTrigger]    Script Date: 7/23/2020 2:16:26 AM ******/
 SET ANSI_NULLS ON
